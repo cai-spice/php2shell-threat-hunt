@@ -1,0 +1,22 @@
+// ============================================================================
+//  ID:             Q02  (report appendix: A2)
+//  Name:           PHP warnings from the attacker
+//  Purpose:        Find which PHP feature the exploit traffic was hitting.
+//  Hunt step:      3
+//  ATT&CK:         T1190 Exploit Public-Facing Application
+//  Tables:         HartwellApacheError_CL
+//  Time range:     2026-10-23 04:00 to 16:00 UTC
+//  Environment:    Practice lab
+//  Hit looks like: A run of PHP warnings tied to the outlier IP that mention "session".
+//  Result:         The warnings came from the session.upload_progress handler.
+//  Benign noise:   Ordinary PHP session warnings from normal visitors. The ClientIP filter removes them.
+//  Tuning notes:   Replace the IP with the outlier from Q01. "session" is broad; narrow it
+//                  to "upload_progress" for fewer rows.
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellApacheError_CL
+| where OriginalTime between (datetime(2026-10-23T04:00:00Z) .. datetime(2026-10-23T16:00:00Z))
+| where ClientIP == "192.168.1.100"
+| where Message contains "session"
+| project OriginalTime, Level, Message

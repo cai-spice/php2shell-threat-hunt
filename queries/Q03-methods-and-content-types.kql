@@ -1,0 +1,22 @@
+// ============================================================================
+//  ID:             Q03  (report appendix: A3, first query)
+//  Name:           Methods and content types sent by the attacker
+//  Purpose:        Profile what the outlier IP sent: Nmap probes and the multipart exploit.
+//  Hunt step:      2 and 4
+//  ATT&CK:         T1595.002 Active Scanning: Vulnerability Scanning
+//                  T1190 Exploit Public-Facing Application
+//  Tables:         HartwellHTTPEnriched_CL
+//  Time range:     2026-10-23 04:00 to 16:00 UTC
+//  Environment:    Practice lab
+//  Hit looks like: A mix of probe-style requests, plus POST requests with multipart/form-data,
+//                  which normal browsing from this host does not produce.
+//  Result:         Nmap Scripting Engine probes, and POST multipart/form-data exploit traffic.
+//  Benign noise:   Legitimate form uploads also use multipart/form-data. Check the target URI.
+//  Tuning notes:   Replace the IP with the outlier from Q01.
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellHTTPEnriched_CL
+| where OriginalTime between (datetime(2026-10-23T04:00:00Z) .. datetime(2026-10-23T16:00:00Z))
+| where id_orig_h == "192.168.1.100"
+| summarize count() by method, content_type

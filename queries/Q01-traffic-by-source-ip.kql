@@ -1,0 +1,20 @@
+// ============================================================================
+//  ID:             Q01  (report appendix: A1)
+//  Name:           Traffic volume by source IP
+//  Purpose:        Find the address generating unusual traffic against the web server.
+//  Hunt step:      1
+//  ATT&CK:         T1595 Active Scanning
+//  Tables:         HartwellApache_CL
+//  Time range:     2026-10-23 04:00 to 16:00 UTC
+//  Environment:    Practice lab
+//  Hit looks like: One source address with a request count far above all others,
+//                  after setting aside the server's own address and known staff hosts.
+//  Result:         192.168.1.100 stood out.
+//  Benign noise:   The server itself and the staff hosts (192.168.1.50, 192.168.1.80).
+//  Tuning notes:   Change the time window. Append "| order by count_ desc" for a ranked list.
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellApache_CL
+| where OriginalTime between (datetime(2026-10-23T04:00:00Z) .. datetime(2026-10-23T16:00:00Z))
+| summarize count() by SourceIP

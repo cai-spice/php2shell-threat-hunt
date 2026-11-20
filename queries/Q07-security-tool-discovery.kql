@@ -1,0 +1,25 @@
+// ============================================================================
+//  ID:             Q07  (report appendix: A5)
+//  Name:           Security tool discovery and stop attempts
+//  Purpose:        Find systemctl commands showing the attacker checking for, or stopping, monitoring.
+//  Hunt step:      9
+//  ATT&CK:         T1518.001 Software Discovery: Security Software Discovery
+//                  T1562.001 Impair Defenses: Disable or Modify Tools
+//  Tables:         HartwellSysmon_CL
+//  Time range:     2026-10-23 04:00 to 16:00 UTC
+//  Environment:    Practice lab
+//  Hit looks like: systemctl commands naming sysmon, auditd or SplunkForwarder, run by www-data.
+//  Result:         The attacker found Sysmon, auditd and the Splunk Universal Forwarder, then tried
+//                  to stop them.
+//  Benign noise:   Administrators run systemctl too. Check the User and ParentImage columns.
+//  Tuning notes:   Add "| where User == 'www-data'" to focus on the web server account.
+//  Changed from the report: the filter read "contains == "systemctl"" with typographic quotes,
+//                  which is a syntax error. It is now: contains "systemctl".
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellSysmon_CL
+| where OriginalTime between (datetime(2026-10-23T04:00:00Z) .. datetime(2026-10-23T16:00:00Z))
+| where CommandLine contains "systemctl"
+| project OriginalTime, User, ParentImage, Image, CommandLine
+| order by OriginalTime asc

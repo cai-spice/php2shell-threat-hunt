@@ -1,0 +1,33 @@
+// ============================================================================
+//  ID:             Q05  (report appendix: A4, "Web shell commands")
+//  Name:           Web shell commands
+//  Purpose:        Pull every request to the web shell so its commands can be decoded.
+//  Hunt step:      5, 7, 8, 10, 12 and 13
+//  ATT&CK:         T1505.003 Server Software Component: Web Shell
+//                  T1059.004 Command and Scripting Interpreter: Unix Shell
+//                  T1027 Obfuscated Files or Information
+//                  T1016 System Network Configuration Discovery
+//                  T1552.001 Unsecured Credentials: Credentials In Files
+//                  T1053.003 Scheduled Task/Job: Cron
+//                  T1036.005 Masquerading: Match Legitimate Name or Location
+//                  T1041 Exfiltration Over C2 Channel
+//  Tables:         HartwellHTTPEnriched_CL
+//  Time range:     2026-10-23 04:00 to 16:00 UTC
+//  Environment:    Practice lab
+//  Hit looks like: Requests to /health-check.php carrying a custom header with an encoded command.
+//  Result:         Commands were wrapped in Base64 and ROT13. Decoded, they show network discovery,
+//                  reading wp-config.php, dumping wp_users, cron persistence, and Base64 exfiltration.
+//  Decoding:       Decode each header value with Base64 first, then ROT13. The decoding step was
+//                  done outside the saved queries and is not included here.
+//  Benign noise:   None expected. Any request to this path is suspicious.
+//  Tuning notes:   Change the URI for another web shell name.
+//  Changed from the report: removed a trailing comma after request_headers in the project line,
+//                  which is a syntax error.
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellHTTPEnriched_CL
+| where OriginalTime between (datetime(2026-10-23T04:00:00Z) .. datetime(2026-10-23T16:00:00Z))
+| where uri == "/health-check.php"
+| project OriginalTime, id_orig_h, request_headers
+| order by OriginalTime asc

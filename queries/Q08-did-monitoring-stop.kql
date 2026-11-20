@@ -1,0 +1,25 @@
+// ============================================================================
+//  ID:             Q08  (report appendix: A6)
+//  Name:           Did any monitoring service actually stop
+//  Purpose:        Check whether the attacker's stop commands ran, and whether the services stayed up.
+//  Hunt step:      11
+//  ATT&CK:         T1562.001 Impair Defenses: Disable or Modify Tools (attempted)
+//  Tables:         HartwellSysmon_CL
+//  Time range:     2026-10-23 04:00 to 16:00 UTC
+//  Environment:    Practice lab
+//  Hit looks like: "systemctl stop" commands from www-data against monitoring services.
+//  Result:         The stop attempts failed. The attacker's own "systemctl is-active" check showed
+//                  all three services still running.
+//  Benign noise:   Legitimate administrator maintenance, which would run as another account.
+//  Tuning notes:   Pair with a check that the services kept logging (the narrative in the report
+//                  relies on this). That check is not saved here.
+//  Changed from the report: the www-data filter used typographic quotes, a syntax error. Replaced
+//                  with straight quotes.
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellSysmon_CL
+| where OriginalTime between (datetime(2026-10-23T04:00:00Z) .. datetime(2026-10-23T16:00:00Z))
+| where User == "www-data"
+| where CommandLine contains "systemctl stop"
+| project OriginalTime, CommandLine, Image

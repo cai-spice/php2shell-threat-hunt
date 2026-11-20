@@ -1,0 +1,19 @@
+// ============================================================================
+//  ID:             Q06  (report appendix: listed as a second "A4", "Finding the user account")
+//  Name:           Which account ran the commands
+//  Purpose:        Identify the account behind process activity after the last exploit request.
+//  Hunt step:      6
+//  ATT&CK:         T1059.004 Command and Scripting Interpreter: Unix Shell
+//  Tables:         HartwellSysmon_CL
+//  Time range:     2026-10-23 09:57 to 16:00 UTC (starts at the last exploit POST from Q04)
+//  Environment:    Practice lab
+//  Hit looks like: A service account such as www-data running commands it never should.
+//  Result:         www-data.
+//  Benign noise:   Other accounts' normal activity appears in the list. Compare it to the baseline.
+//  Tuning notes:   Set the start time to the last exploit request found in Q04.
+//  Author / date:  Cai Spice · hunt run 2026-10-23, documented 2026-11-20
+// ============================================================================
+
+HartwellSysmon_CL
+| where OriginalTime between (datetime(2026-10-23T09:57:00Z) .. datetime(2026-10-23T16:00:00Z))
+| distinct User
