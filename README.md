@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="project-card-health-check.svg" alt="The Health Check That Wasn't: a web shell threat hunt using Microsoft Sentinel and KQL. 14 hunt steps, 13 ATT&CK techniques, 9 kill chain phases. Hypothesis confirmed." width="100%">
+<img src="project-card-health-check(2).svg" alt="The Health Check That Wasn't: a web shell threat hunt using Microsoft Defender and KQL. 14 hunt steps, 13 ATT&CK techniques, 9 kill chain phases. Hypothesis confirmed." width="100%">
 
 </div>
 
@@ -18,7 +18,7 @@ The good news: the attacker never got past the low-privilege www-data account, e
 | **Environment** | Practice lab (simulated organization) |
 | **Hunt window** | 23 October 2026, 04:00 to 16:00 UTC |
 | **Report date** | 20 November 2026 |
-| **Platform** | Microsoft Sentinel (Log Analytics) and KQL |
+| **Platform** | Microsoft Defender and KQL |
 | **Result** | Hypothesis confirmed |
 | **Scale** | 14 hunt steps · 13 ATT&CK techniques · 9 phases · 8 queries documented |
 
@@ -295,16 +295,16 @@ There isn't any evidence to suggest lateral movement or privilege escalation. Th
 
 ## 🕯️ Lessons Learned
 
-- **What worked:** Starting from one precise detection point and following the trail in order: access log, error log, HTTP data, then endpoint telemetry. Mapping each finding to ATT&CK as I went kept the hunt organized.
+- **What worked:** Starting from one detection point and following the trail in order.
 - **Precision matters as much as resourcefulness.** Something as simple as the wrong time window can hide the evidence you are looking for.
-- **Blind spots show up in real time.** Finding them and working through them was the most valuable part of the hunt.
-- **What I'd do differently:** Save every query and take screenshots as I go. I did not, and some of the work is not documented.
+- **My blind spots in KQL show up in real time.** Finding and working through them was the most valuable part of the learning process.
+- **Something I'd do differently:** Save every query and take screenshots of the logs as I go. I did not, and some of the work is not documented.
 
 <img src="divider.svg" alt="" width="100%">
 
 ## 📚 References
 
-- [Read the full report](/Hartwell_Threat_Hunting_Reportv1.docx.pdf)
+- [Read the full report](/Hartwell_Threat_Hunting_Reportv1.docx.pdf) 
 - [MITRE ATT&CK](https://attack.mitre.org/)
 - [Kusto Query Language reference](https://learn.microsoft.com/en-us/kusto/query/)
 - [PHP session upload progress](https://www.php.net/manual/en/session.upload-progress.php)
