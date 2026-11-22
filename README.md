@@ -304,7 +304,7 @@ There isn't any evidence to suggest lateral movement or privilege escalation. Th
 
 ## 📚 References
 
-- [Read the full report] 
+- [Read the full report](/Hartwell_Threat_Hunting_Reportv1)
 - [MITRE ATT&CK](https://attack.mitre.org/)
 - [Kusto Query Language reference](https://learn.microsoft.com/en-us/kusto/query/)
 - [PHP session upload progress](https://www.php.net/manual/en/session.upload-progress.php)
