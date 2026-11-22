@@ -6,9 +6,11 @@
 
 <img src="divider.svg" alt="" width="100%">
 
-## 📜 Quest Summary
+## 📜 Summary
 
-> **A public WordPress server was compromised through PHP's `session.upload_progress` handling. A web shell named `health-check.php` gave the attacker control as `www-data`, and they stole the database credentials and the WordPress user table. They never rose above that low-privilege account, their attempts to switch off monitoring failed, and nothing points to lateral movement.**
+> It started with a file that should have never been created. On October 23rd 2026, auditd (a component of the Linux auditing system) flagged the Apache service account, www-data, indicating file writes to the webroot of Hartwell's public WordPress server. The www-data account runs Apache worker processes and should never write files outside the WordPress upload directory, so I started hunting. 
+The hunt confirmed a full compromise of the web server. An outside address scanned the site, exploited a weakness in PHP's upload-progress feature, and planted a web shell disguised as a harmless "health check". From there the attacker mapped the network, spotted the security tools, read the database password from WordPress's configuration file, and copied out the WordPress password hashes from the user table. They tried to switch off monitoring services and failed. They then set up a cron job (a task scheduled to run automatically at fixed times or intervals on a computer system) to keep a foothold, and smuggled the stolen data out through the same web shell.
+The good news: the attacker never got past the low-privilege www-data account, every attempt to blind the monitoring tools failed, and there is no sign they moved to any other system.
 
 | | |
 |---|---|
@@ -16,21 +18,9 @@
 | **Environment** | Practice lab (simulated organization) |
 | **Hunt window** | 23 October 2026, 04:00 to 16:00 UTC |
 | **Report date** | 20 November 2026 |
-| **Platform** | Microsoft Sentinel (Log Analytics) and KQL. Host telemetry from Sysmon for Linux and auditd |
-| **Target** | One web server: WordPress 7.1.3, Apache 2.4.69, PHP 8.4.4, Debian 13, MySQL on localhost |
+| **Platform** | Microsoft Sentinel (Log Analytics) and KQL |
 | **Result** | Hypothesis confirmed |
 | **Scale** | 14 hunt steps · 13 ATT&CK techniques · 9 phases · 8 queries documented |
-
-**In short:** It started with one auditd alert, the Apache service account writing a file into the webroot, which it should never do. Working outward from that alert through web, endpoint and system logs, the hunt reconstructed the whole intrusion: scanning, exploitation, a disguised web shell, discovery, credential theft, a failed attempt to blind monitoring, cron persistence, and exfiltration through the shell's own HTTP responses. It also set the limits of the damage, which gives a response team a clear list of what to remove, reset and block.
-
-<img src="divider.svg" alt="" width="100%">
-
-## 🧭 Scope and Rules
-
-- **In scope:** One host, the web server, and the seven log tables listed below.
-- **Out of scope:** Any other system on the network. The hunt looked for signs of movement to other hosts but did not hunt on them.
-- **Environment note:** This is a practice scenario run in a learning workspace, not a live production environment.
-- **Time handling:** Every time filter uses the `OriginalTime` column, which holds the true event time, and all times are UTC.
 
 <img src="divider.svg" alt="" width="100%">
 
@@ -42,54 +32,9 @@
 
 **Baseline used:** The system administrator and a service account connect over SSH from two known hosts during business hours (08:00 to 18:00, weekdays). `www-data` should never spawn interactive shells, run discovery commands, or write files outside the upload directory.
 
-### Why this was the detection point
-
-| Candidate | Strengths | Chosen? |
-|---|---|---|
-| `www-data` writing to the webroot | Breaks a hard baseline rule and marks the moment of foothold | **Chosen.** High confidence, and it sits between the entry and everything that followed |
-| Scanning from the outlier IP | Earliest sign of the attacker | Not chosen. Scanning alone does not prove a compromise |
-| Attempts to stop monitoring | Clear sign of hostile intent | Not chosen. It happened after credentials were already taken |
-
-<img src="divider.svg" alt="" width="100%">
-
-## 🗂️ Data Sources
-
-| Table | What it records | Used for |
-|---|---|---|
-| `HartwellApache_CL` | Apache access log | Spotting the outlier IP and its scanning |
-| `HartwellApacheError_CL` | Apache error log | PHP warnings that revealed the exploited feature |
-| `HartwellHTTPEnriched_CL` | HTTP requests rebuilt from packet capture | Exploit requests and the encoded web shell commands |
-| `HartwellSysmon_CL` | Sysmon for Linux process and file events | Commands run as `www-data`, and security tool discovery |
-| `HartwellAudit_CL` | auditd system call records | The original webroot write alerts |
-| `HartwellSyslog_CL` | System log | Checking whether the monitoring services were stopped |
-| `HartwellAuth_CL` | Authentication events | Checking logins against the staff baseline |
-
-<img src="divider.svg" alt="" width="100%">
-
-## 🪜 Hunt Steps
-
-| # | Question asked | Source (query) | Result |
-|---|---|---|---|
-| 1 | Who generated unusual traffic? | Apache access ([Q01](queries/Q01-traffic-by-source-ip.kql)) | `192.168.1.100`, once the server's own address and staff hosts were set aside |
-| 2 | What tool did the scanning? | HTTP enriched ([Q03](queries/Q03-methods-and-content-types.kql)) | Nmap Scripting Engine (NSE) |
-| 3 | What PHP feature did the exploit hit? | Apache error ([Q02](queries/Q02-php-warnings-from-attacker.kql)) | `session.upload_progress` |
-| 4 | What made the exploit traffic stand out? | HTTP enriched ([Q03](queries/Q03-methods-and-content-types.kql), [Q04](queries/Q04-attacker-post-requests.kql)) | `POST` with `multipart/form-data` |
-| 5 | What new file appeared in the webroot? | HTTP enriched ([Q05](queries/Q05-web-shell-commands.kql)) | `health-check.php` |
-| 6 | Which account ran the commands? | Sysmon ([Q06](queries/Q06-which-account-ran-commands.kql)) | `www-data` |
-| 7 | How were the commands disguised? | HTTP enriched ([Q05](queries/Q05-web-shell-commands.kql)) | ROT13, then Base64 |
-| 8 | How did the attacker map the network? | HTTP enriched ([Q05](queries/Q05-web-shell-commands.kql)) | `ip addr`, `ip neigh`, `ss -tlnp` |
-| 9 | Which security tools did they find? | Sysmon ([Q07](queries/Q07-security-tool-discovery.kql)) | Sysmon, auditd, Splunk Universal Forwarder |
-| 10 | Where did the credentials come from? | HTTP enriched ([Q05](queries/Q05-web-shell-commands.kql)) | `wp-config.php`, then the `wp_users` table |
-| 11 | Did they disable monitoring? | Sysmon ([Q08](queries/Q08-did-monitoring-stop.kql)) | No. The stop attempts failed |
-| 12 | How did they stay in? | HTTP enriched ([Q05](queries/Q05-web-shell-commands.kql)) | Cron job running `/dev/shm/.cache-helper` |
-| 13 | How did the data leave? | HTTP enriched ([Q05](queries/Q05-web-shell-commands.kql)) | Base64 in the web shell's HTTP responses |
-| 14 | Did they move to other systems? | All tables | No evidence of lateral movement |
-
 <img src="divider.svg" alt="" width="100%">
 
 ## ⏳ Timeline
-
-Reconstructed from the logs, in order. The only timestamp I saved was the last exploit request (09:57 UTC); the rest sat in query results I did not keep (see the limits at the end of Lessons Learned).
 
 | # | Phase | What happened | ATT&CK | Evidence |
 |---|---|---|---|---|
@@ -106,8 +51,6 @@ Reconstructed from the logs, in order. The only timestamp I saved was the last e
 <img src="divider.svg" alt="" width="100%">
 
 ## 🛡️ MITRE ATT&CK Mapping
-
-Status key: **Observed** (seen in logs) · **Attempted** (tried, did not succeed) · **Not observed** (hunted for, nothing found)
 
 | Tactic | ID | Technique | Status | Evidence | Query |
 |---|---|---|---|---|---|
@@ -126,17 +69,9 @@ Status key: **Observed** (seen in logs) · **Attempted** (tried, did not succeed
 | Exfiltration | [T1041](https://attack.mitre.org/techniques/T1041/) | Exfiltration Over C2 Channel | Observed | Base64 data returned in the web shell's HTTP responses | [Q05](queries/Q05-web-shell-commands.kql) |
 | Lateral Movement | [T1021](https://attack.mitre.org/techniques/T1021/) | Remote Services | Not observed | No SSH, SCP, rsync or remote access commands | Checked across all tables |
 
-**Coverage:** 13 techniques observed or attempted across 8 tactics, plus 1 hunted for and not found.
-
-<!-- Note on T1552.001: the original report mapped the wp-config.php credential read to T1555
-     (Credentials from Password Stores). T1552.001 fits better because the password sits in a plain
-     config file. Change it back here if you prefer to keep the report's mapping. -->
-
 <img src="divider.svg" alt="" width="100%">
 
 ## 🔍 KQL Queries
-
-Each query is in [`queries/`](queries/) with a header giving its purpose, tables, ATT&CK mapping, and tuning notes. All time windows are 23 October 2026 UTC. Table names come from the practice workspace; change them for your own.
 
 | ID | Name | Finds | Report ref |
 |---|---|---|---|
@@ -307,7 +242,7 @@ HartwellSysmon_CL
 
 ### Did the attacker move to other systems?
 
-The evidence says no. The attacker stayed on the web server for the whole intrusion.
+There isn't any evidence to suggest lateral movement or privilege escalation. The attacker stayed on the web server for the entirety of the intrusion.
 
 - The decoded command log contains no SSH, SCP, rsync or remote access commands.
 - Sysmon process events from `www-data` show only local commands and loopback MySQL connections.
@@ -318,13 +253,11 @@ The evidence says no. The attacker stayed on the web server for the whole intrus
 
 ## 🧾 Indicators of Compromise
 
-Values from a practice scenario.
-
 | Type | Indicator | Action |
 |---|---|---|
 | IP address | `192.168.1.100` | Block and alert |
-| Web shell | `/var/www/html/health-check.php` | Remove; alert on any request to it |
-| File | `/dev/shm/.cache-helper` | Remove; hunt for it on other hosts |
+| Web shell | `/var/www/html/health-check.php` | Remove  |
+| File | `/dev/shm/.cache-helper` | Remove |
 | Scheduled task | `www-data` cron job running `/dev/shm/.cache-helper` every 5 minutes | Remove |
 | Request pattern | `POST` with `multipart/form-data` used to exploit `session.upload_progress` | Alert |
 
@@ -334,7 +267,7 @@ Values from a practice scenario.
 
 **Contain now**
 1. Block the attacker's address, `192.168.1.100`.
-2. Cut off access to `/var/www/html/health-check.php`, the attacker's only channel into the server.
+2. Cut off access to `/var/www/html/health-check.php`, the attacker's channel into the server.
 3. Copy `/dev/shm/.cache-helper` **before** the server is rebooted. It lives in RAM, so a reboot destroys it and leaves no disk evidence.
 
 **Accounts and credentials**
@@ -365,32 +298,16 @@ Values from a practice scenario.
 - **What worked:** Starting from one precise detection point and following the trail in order: access log, error log, HTTP data, then endpoint telemetry. Mapping each finding to ATT&CK as I went kept the hunt organized.
 - **Precision matters as much as resourcefulness.** Something as simple as the wrong time window can hide the evidence you are looking for.
 - **Blind spots show up in real time.** Finding them and working through them was the most valuable part of the hunt.
-- **What I'd do differently:** Save every query and take screenshots as I go. I did not, and a good amount of the work is not documented.
-
-**Limits of this write-up**
-- The eight queries above are the ones I saved. Others were run during the hunt but not kept, including the decoding step for Q05 and the checks that other tables showed no lateral movement.
-- Most timestamps from the hunt were not saved. Only the last exploit request (09:57 UTC) is recorded.
-- One host, one practice scenario. The queries have not been tested at production scale.
-- The queries were corrected for syntax before publishing (see the headers of Q05, Q07 and Q08), and I have not been able to re-run them against the original workspace.
+- **What I'd do differently:** Save every query and take screenshots as I go. I did not, and some of the work is not documented.
 
 <img src="divider.svg" alt="" width="100%">
 
 ## 📚 References
 
+- [Read the full report] 
 - [MITRE ATT&CK](https://attack.mitre.org/)
 - [Kusto Query Language reference](https://learn.microsoft.com/en-us/kusto/query/)
 - [PHP session upload progress](https://www.php.net/manual/en/session.upload-progress.php)
-
-### Glossary
-
-| Term | Meaning |
-|---|---|
-| Web shell | A script planted on a web server that lets an attacker run commands through ordinary web requests |
-| `www-data` | The low-privilege Debian account that runs Apache |
-| `session.upload_progress` | A PHP feature that tracks the progress of file uploads, and the target of the exploit |
-| ROT13 / Base64 | Simple, reversible encodings used to disguise the web shell's commands |
-| tmpfs (`/dev/shm`) | A filesystem held entirely in RAM, wiped on reboot |
-| Cron | The Linux scheduler for running jobs on a timetable |
 
 <div align="center">
 
