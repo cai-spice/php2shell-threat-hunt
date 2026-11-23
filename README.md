@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="project-card-health-check(2).svg" alt="The Health Check That Wasn't: a web shell threat hunt using Microsoft Defender and KQL. 14 hunt steps, 13 ATT&CK techniques, 9 kill chain phases. Hypothesis confirmed." width="100%">
+<img src="project-card-health-check(3).svg" alt="The Health Check That Wasn't: a web shell threat hunt using Microsoft Defender and KQL. 14 hunt steps, 13 ATT&CK techniques, 9 kill chain phases. Hypothesis confirmed." width="100%">
 
 </div>
 
